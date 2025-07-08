@@ -14,7 +14,7 @@ export default function Home() {
       event_name: "Lead",
       event_time: Math.floor(Date.now() / 1000),
       action_source: "website",
-      event_source_url: "https://www.digitalpaisagismo.com.br",
+      event_source_url: window.location.origin + window.location.pathname,
       user_data: {
         external_id: "dec28dba1ef8f7a974d0daa5fb417e886d608ff870dea037176fafd3ef931045",
         client_ip_address: "177.155.123.123",
