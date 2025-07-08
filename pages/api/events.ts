@@ -9,7 +9,7 @@ const ACCESS_TOKEN = "EAAQfmxkTTZCcBPMtbiRdOTtGC1LycYJsKXnFZCs3N04MsoBjbx5WdvaPh
 const META_URL = `https://graph.facebook.com/v19.0/${PIXEL_ID}/events`;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Origin", "https://www.digitalpaisagismo.online");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "*");
 
@@ -29,7 +29,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const sessionId = event.session_id || "";
       const externalId = sessionId ? crypto.createHash("sha256").update(sessionId).digest("hex") : "";
       const eventId = event.event_id || `evt_${Date.now()}`;
-      const eventSourceUrl = event.event_source_url || "https://www.digitalpaisagismo.com.br";
+      const eventSourceUrl =
+        event.event_source_url ||
+        `${req.headers.origin || `https://${req.headers.host}`}`;
       const eventTime = event.event_time || Math.floor(Date.now() / 1000);
       const actionSource = event.action_source || "website";
 
