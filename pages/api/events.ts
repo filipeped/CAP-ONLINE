@@ -1,10 +1,10 @@
-// ✅ digitalpaisagismo-capi-v6-final
-// Proxy Meta CAPI com todas as boas práticas aplicadas
+// ✅ digitalpaisagismo-capi-v6-final (.online)
+// Proxy Meta CAPI com deduplicação segura por domínio secundário
 
 import type { NextApiRequest, NextApiResponse } from "next";
 import crypto from "crypto";
 
-const PIXEL_ID = "703302575818162";
+const PIXEL_ID = "1142320931265624";
 const ACCESS_TOKEN = "EAAQfmxkTTZCcBPMtbiRdOTtGC1LycYJsKXnFZCs3N04MsoBjbx5WdvaPhObbtmKg3iDZBJZAjAlpzqWAr80uEUsUSm95bVCODpzJSsC3X6gA9u6yPC3oDko8gUIMW2SA5C7MOsZBvmyVN72N38UcMKp8uGbQaPxe9r5r66H6PAXuZCieIl6gPIFU5c2ympRwZDZD";
 const META_URL = `https://graph.facebook.com/v19.0/${PIXEL_ID}/events`;
 
@@ -26,10 +26,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const userAgent = req.headers["user-agent"] || "";
 
     const enrichedData = req.body.data.map((event: any) => {
-      const sessionId = event.session_id || "";
-      const externalId = sessionId ? crypto.createHash("sha256").update(sessionId).digest("hex") : "";
-      const eventId = event.event_id || `evt_${Date.now()}`;
-      const eventSourceUrl = event.event_source_url || "https://www.digitalpaisagismo.com.br";
+      const rawSessionId = event.session_id || "";
+      const namespacedSessionId = `online::${rawSessionId}`;
+      const externalId = rawSessionId ? crypto.createHash("sha256").update(namespacedSessionId).digest("hex") : "";
+      const eventId = event.event_id || `evt_online_${Date.now()}`;
+      const eventSourceUrl = event.event_source_url || "https://www.digitalpaisagismo.online";
       const eventTime = event.event_time || Math.floor(Date.now() / 1000);
       const actionSource = event.action_source || "website";
 
@@ -58,7 +59,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const payload = { data: enrichedData };
 
-    console.log("🔄 Enviando evento para Meta CAPI...");
+    console.log("🔄 Enviando evento do .online para Meta CAPI...");
     console.log("📦 Payload:", JSON.stringify(payload));
     console.log("📊 Pixel ID:", PIXEL_ID);
 
@@ -72,7 +73,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log("✅ Resposta da Meta:", data);
     res.status(response.status).json(data);
   } catch (err) {
-    console.error("❌ Erro no Proxy CAPI:", err);
-    res.status(500).json({ error: "Erro interno no servidor CAPI." });
+    console.error("❌ Erro no Proxy CAPI (.online):", err);
+    res.status(500).json({ error: "Erro interno no servidor CAPI (.online)." });
   }
 }
