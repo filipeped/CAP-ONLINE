@@ -1,5 +1,5 @@
 // ✅ digitalpaisagismo-capi-v6-online
-// Proxy Meta CAPI exclusivo para digitalpaisagismo.online com deduplicação segura
+// Proxy Meta CAPI exclusivo para digitalpaisagismo.online com deduplicação segura + user_data completo
 
 import type { NextApiRequest, NextApiResponse } from "next";
 import crypto from "crypto";
@@ -34,11 +34,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const eventTime = event.event_time || Math.floor(Date.now() / 1000);
       const actionSource = event.action_source || "website";
 
+      const rawValue = event.custom_data?.value;
+      const parsedValue = typeof rawValue === "string" ? Number(rawValue) : rawValue;
+
       const customData = {
-        value: event.custom_data?.value ?? 0,
+        ...event.custom_data,
         currency: event.custom_data?.currency ?? "BRL",
-        ...event.custom_data
       };
+
+      if (!isNaN(parsedValue) && parsedValue > 0) {
+        customData.value = parsedValue;
+      } else {
+        delete customData.value;
+      }
 
       return {
         ...event,
@@ -52,7 +60,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           client_ip_address: ip,
           client_user_agent: userAgent,
           fbp: event.user_data?.fbp || "",
-          fbc: event.user_data?.fbc || ""
+          fbc: event.user_data?.fbc || "",
+          em: event.user_data?.em || "",
+          ph: event.user_data?.ph || "",
+          fn: event.user_data?.fn || "",
+          ln: event.user_data?.ln || ""
         }
       };
     });
