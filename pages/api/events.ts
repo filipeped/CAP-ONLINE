@@ -1,5 +1,5 @@
 // ✅ digitalpaisagismo-capi-v6-ipv6-ready
-// Proxy Meta CAPI com user_data completo e client_ip_address com suporte a IPv6
+// Proxy Meta CAPI com user_data completo, IPv6, deduplicação segura e event_name garantido
 
 import type { NextApiRequest, NextApiResponse } from "next";
 import crypto from "crypto";
@@ -30,11 +30,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const enrichedData = req.body.data.map((event: any) => {
       const rawSessionId = event.session_id || "";
       const namespacedSessionId = `online::${rawSessionId}`;
-      const externalId = namespacedSessionId ? crypto.createHash("sha256").update(namespacedSessionId).digest("hex") : "";
+      const externalId = namespacedSessionId
+        ? crypto.createHash("sha256").update(namespacedSessionId).digest("hex")
+        : "";
       const eventId = event.event_id || `evt_${Date.now()}`;
       const eventSourceUrl = event.event_source_url || "https://www.digitalpaisagismo.online";
       const eventTime = event.event_time || Math.floor(Date.now() / 1000);
       const actionSource = event.action_source || "website";
+      const eventName = event.event_name || "PageView";
 
       const rawValue = event.custom_data?.value;
       const parsedValue = typeof rawValue === "string" ? Number(rawValue) : rawValue;
@@ -50,8 +53,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         delete customData.value;
       }
 
+      const fbcValue = event.user_data?.fbc;
+      const isFbcValid = typeof fbcValue === "string" && fbcValue.includes("fb.");
+
       return {
         ...event,
+        event_name: eventName,
         event_id: eventId,
         event_time: eventTime,
         event_source_url: eventSourceUrl,
@@ -61,8 +68,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           external_id: externalId,
           client_ip_address: clientIp,
           client_user_agent: userAgent,
-          fbp: event.user_data?.fbp || "",
-          fbc: event.user_data?.fbc || "",
+          fbp: event.user_data?.fbp || undefined,
+          fbc: isFbcValid ? fbcValue : undefined,
           em: event.user_data?.em || "",
           ph: event.user_data?.ph || "",
           fn: event.user_data?.fn || "",
