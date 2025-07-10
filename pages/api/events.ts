@@ -1,5 +1,5 @@
-// ✅ digitalpaisagismo-capi-v6-online
-// Proxy Meta CAPI exclusivo para digitalpaisagismo.online com deduplicação segura + user_data completo
+// ✅ digitalpaisagismo-capi-v6-ipv6-ready
+// Proxy Meta CAPI com user_data completo e client_ip_address com suporte a IPv6
 
 import type { NextApiRequest, NextApiResponse } from "next";
 import crypto from "crypto";
@@ -22,7 +22,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: "Payload inválido - campo 'data' obrigatório" });
     }
 
-    const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || req.socket.remoteAddress || "";
+    const ipHeader = req.headers["x-forwarded-for"] as string;
+    const rawIp = ipHeader?.split(",")[0]?.trim() || req.socket.remoteAddress || "";
+    const clientIp = rawIp.includes(":") ? rawIp : `::ffff:${rawIp}`;
     const userAgent = req.headers["user-agent"] || "";
 
     const enrichedData = req.body.data.map((event: any) => {
@@ -48,9 +50,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         delete customData.value;
       }
 
-      const fbcValue = event.user_data?.fbc;
-      const isFbcValid = typeof fbcValue === "string" && fbcValue.includes("fb.");
-
       return {
         ...event,
         event_id: eventId,
@@ -60,10 +59,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         custom_data: customData,
         user_data: {
           external_id: externalId,
-          client_ip_address: ip,
+          client_ip_address: clientIp,
           client_user_agent: userAgent,
-          fbp: event.user_data?.fbp || undefined,
-          fbc: isFbcValid ? fbcValue : undefined,
+          fbp: event.user_data?.fbp || "",
+          fbc: event.user_data?.fbc || "",
           em: event.user_data?.em || "",
           ph: event.user_data?.ph || "",
           fn: event.user_data?.fn || "",
