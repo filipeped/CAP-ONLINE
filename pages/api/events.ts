@@ -48,6 +48,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         delete customData.value;
       }
 
+      const fbcValue = event.user_data?.fbc;
+      const isFbcValid = typeof fbcValue === "string" && fbcValue.includes("fb.");
+
       return {
         ...event,
         event_id: eventId,
@@ -59,8 +62,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           external_id: externalId,
           client_ip_address: ip,
           client_user_agent: userAgent,
-          fbp: event.user_data?.fbp || "",
-          fbc: event.user_data?.fbc || "",
+          fbp: event.user_data?.fbp || undefined,
+          fbc: isFbcValid ? fbcValue : undefined,
           em: event.user_data?.em || "",
           ph: event.user_data?.ph || "",
           fn: event.user_data?.fn || "",
