@@ -1,4 +1,4 @@
-// ✅ digitalpaisagismo.online – Versão CAPI secundária
+// ✅ digitalpaisagismo.online – Versão CAPI secundária com validação e logs aprimorados
 import type { NextApiRequest, NextApiResponse } from "next";
 import crypto from "crypto";
 
@@ -7,8 +7,8 @@ const ACCESS_TOKEN = "EAAQfmxkTTZCcBPMtbiRdOTtGC1LycYJsKXnFZCs3N04MsoBjbx5WdvaPh
 const META_URL = `https://graph.facebook.com/v19.0/${PIXEL_ID}/events`;
 
 function hashPII(value: string): string {
-  if (!value || typeof value !== 'string') return '';
-  return crypto.createHash('sha256').update(value.toLowerCase().trim()).digest('hex');
+  if (!value || typeof value !== "string") return "";
+  return crypto.createHash("sha256").update(value.toLowerCase().trim()).digest("hex");
 }
 
 function isValidEmail(email: string): boolean {
@@ -16,12 +16,12 @@ function isValidEmail(email: string): boolean {
 }
 
 function isValidPhone(phone: string): boolean {
-  const clean = phone.replace(/\D/g, '');
+  const clean = phone.replace(/\D/g, "");
   return clean.length >= 10 && clean.length <= 15;
 }
 
 function cleanPII(value: string): string {
-  return typeof value === 'string' ? value.toLowerCase().trim() : '';
+  return typeof value === "string" ? value.toLowerCase().trim() : "";
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -49,11 +49,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const eventSourceUrl = event.event_source_url || "https://www.digitalpaisagismo.online";
       const actionSource = event.action_source || "website";
 
-      const rawValue = event.custom_data?.value;
-      const parsedValue = typeof rawValue === "string" ? Number(rawValue) : rawValue;
+      const rawCustom = typeof event.custom_data === "object" ? event.custom_data : {};
+      const rawUser = typeof event.user_data === "object" ? event.user_data : {};
+
+      const parsedValue = typeof rawCustom?.value === "string" ? Number(rawCustom.value) : rawCustom.value;
       const customData: any = {
-        ...event.custom_data,
-        currency: event.custom_data?.currency ?? "BRL",
+        ...rawCustom,
+        currency: rawCustom?.currency ?? "BRL",
       };
       if (!isNaN(parsedValue) && parsedValue > 0) {
         customData.value = parsedValue;
@@ -64,19 +66,28 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         client_user_agent: userAgent,
       };
 
-      if (externalId) {
-        userData.external_id = externalId;
+      if (externalId) userData.external_id = externalId;
+      if (rawUser.fbp && typeof rawUser.fbp === "string") userData.fbp = rawUser.fbp.trim();
+      if (rawUser.fbc && typeof rawUser.fbc === "string" && rawUser.fbc.trim().length >= 10) userData.fbc = rawUser.fbc.trim();
+
+      if (rawUser.em && isValidEmail(cleanPII(rawUser.em))) userData.em = hashPII(cleanPII(rawUser.em));
+      if (rawUser.ph && isValidPhone(cleanPII(rawUser.ph))) userData.ph = hashPII(cleanPII(rawUser.ph));
+      if (rawUser.fn && cleanPII(rawUser.fn).length >= 2) userData.fn = hashPII(cleanPII(rawUser.fn));
+      if (rawUser.ln && cleanPII(rawUser.ln).length >= 2) userData.ln = hashPII(cleanPII(rawUser.ln));
+
+      if (event.event_name === "Lead") {
+        if (!externalId || (!userData.em && !userData.ph && !userData.fn && !userData.ln)) {
+          console.warn("⚠️ Evento Lead com dados de correspondência insuficientes");
+        }
       }
 
-      const u = event.user_data || {};
-
-      if (u.fbp && typeof u.fbp === "string") userData.fbp = u.fbp.trim();
-      if (u.fbc && typeof u.fbc === "string" && u.fbc.trim().length >= 10) userData.fbc = u.fbc.trim();
-
-      if (u.em && isValidEmail(cleanPII(u.em))) userData.em = hashPII(cleanPII(u.em));
-      if (u.ph && isValidPhone(cleanPII(u.ph))) userData.ph = hashPII(cleanPII(u.ph));
-      if (u.fn && cleanPII(u.fn).length >= 2) userData.fn = hashPII(cleanPII(u.fn));
-      if (u.ln && cleanPII(u.ln).length >= 2) userData.ln = hashPII(cleanPII(u.ln));
+      console.log("📦 Evento preparado:", {
+        event_name: event.event_name,
+        event_id,
+        external_id,
+        user_data: userData,
+        custom_data: customData,
+      });
 
       return {
         ...event,
@@ -85,19 +96,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         event_source_url: eventSourceUrl,
         action_source: actionSource,
         custom_data: customData,
-        user_data: userData
+        user_data: userData,
       };
     });
 
     const response = await fetch(`${META_URL}?access_token=${ACCESS_TOKEN}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ data: enrichedData })
+      body: JSON.stringify({ data: enrichedData }),
     });
 
     const result = await response.json();
     res.status(response.status).json(result);
   } catch (err) {
+    console.error("❌ Erro ao processar evento:", err);
     res.status(500).json({ error: "Erro interno no servidor CAPI." });
   }
 }
