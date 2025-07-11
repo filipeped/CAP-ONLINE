@@ -11,7 +11,7 @@ function hashPII(value: string): string {
 }
 
 function isValidEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.toLowerCase().trim());
+  return /^[^\s@]+@[^\s@]+$/.test(email.toLowerCase().trim());
 }
 
 function isValidPhone(phone: string): boolean {
@@ -46,6 +46,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       const eventId = event.event_id || `evt_online_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
       const eventTime = event.event_time || Math.floor(Date.now() / 1000);
+      // Aqui muda para o domínio .online
       const eventSourceUrl = event.event_source_url || "https://www.digitalpaisagismo.online";
       const actionSource = event.action_source || "website";
 
